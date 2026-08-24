@@ -9,41 +9,75 @@ from pathlib import Path
 from mea_time_freq import MEATxtOpener, plot_time_frequency
 import matplotlib.pyplot as plt
 
-input_path = Path(
-    "50-4AP testing channel 17.txt"
-)
+# Folder containing the input TXT files.
+folder_path = Path("data_files")
 
-png_output_path = input_path.with_name(
-    f"{input_path.stem}_time_frequency.png"
-)
+# Store all generated files in a separate folder.
+output_folder = folder_path / "time_frequency_results"
+output_folder.mkdir(parents=True, exist_ok=True)
 
-csv_output_path = input_path.with_name(
-    f"{input_path.stem}_time_frequency.csv"
-)
+# Find all TXT files directly inside data_files.
+txt_files = sorted(folder_path.glob("*.txt"))
 
-recording = MEATxtOpener(input_path).load()
-print(recording.columns)
+if not txt_files:
+    raise FileNotFoundError(
+        f"No TXT files were found in: {folder_path.resolve()}"
+    )
 
-figure, axes = plot_time_frequency(
-    recording,
-    time_column=0,
-    signal_column=1,
-    start_seconds=None,
-    end_seconds=None,
-    min_frequency=1,
-    max_frequency=250,
-    window_seconds=0.5,
-    overlap_fraction=0.90,
-    relative_db=True,
-    csv_output_path=csv_output_path,
-)
+print(f"Found {len(txt_files)} TXT file(s).")
 
-figure.savefig(
-    png_output_path,
-    dpi=300,
-    bbox_inches="tight",
-)
 
-print(f"Saved figure: {png_output_path.resolve()}")
+for file_number, input_path in enumerate(txt_files, start=1):
+    print(
+        f"\nProcessing {file_number}/{len(txt_files)}: "
+        f"{input_path.name}"
+    )
 
-plt.show()
+    png_output_path = output_folder / (
+        f"{input_path.stem}_time_frequency.png"
+    )
+
+    csv_output_path = output_folder / (
+        f"{input_path.stem}_time_frequency.csv"
+    )
+
+    try:
+        recording = MEATxtOpener(input_path).load()
+
+        print(f"Detected columns: {recording.columns}")
+        
+        ## Change by Aisha ##
+        figure, axes = plot_time_frequency(
+            recording,
+            time_column=0,
+            signal_column=2,
+            start_seconds=None,
+            end_seconds=None,
+            min_frequency=1,
+            max_frequency=250,
+            window_seconds=0.1,
+            overlap_fraction=0.90,
+            relative_db=True,
+            csv_output_path=csv_output_path,
+        )
+        ##              ##
+
+        figure.savefig(
+            png_output_path,
+            dpi=300,
+            bbox_inches="tight",
+        )
+
+        # Release the figure's memory before processing the next file.
+        plt.close(figure)
+
+        print(f"Saved PNG: {png_output_path.resolve()}")
+        print(f"Saved CSV: {csv_output_path.resolve()}")
+
+    except Exception as error:
+        # Report the failure but continue processing the remaining files.
+        print(f"Failed to process {input_path.name}")
+        print(f"Reason: {error}")
+
+
+print("\nFinished processing all TXT files.")
